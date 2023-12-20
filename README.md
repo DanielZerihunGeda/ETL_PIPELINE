@@ -1,15 +1,18 @@
-Welcome to your new dbt project!
+# Project Title
 
-### Using the starter project
+Transforming raw data collected from swarm drone collected from different source
 
-Try running the following commands:
-- dbt run
-- dbt test
+## Overview
+
+Load the raw data and transform
+
+## Getting Started
+
+Follow these steps to set up and run the ETL pipeline.
 
 
-### Resources:
-- Learn more about dbt [in the docs](https://docs.getdbt.com/docs/introduction)
-- Check out [Discourse](https://discourse.getdbt.com/) for commonly asked questions and answers
-- Join the [chat](https://community.getdbt.com/) on Slack for live discussions and support
-- Find [dbt events](https://events.getdbt.com) near you
-- Check out [the blog](https://blog.getdbt.com/) for the latest news on dbt's development and best practices
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/DanielZerihunGeda/ETL_PIPELINE.git
+cd ETL_PIPELINE
