@@ -49,3 +49,4 @@ Thumbs.db
 secrets.yaml
 config/secrets.yaml
 swarm_drone.csv
+env/
