@@ -48,5 +48,3 @@ Thumbs.db
 # Custom ignore for sensitive information (e.g., credentials)
 secrets.yaml
 config/secrets.yaml
-swarm_drone.csv
-env/
