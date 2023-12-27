@@ -1,0 +1,58 @@
+# .gitignore
+
+# Ignore Python virtual environment
+venv/
+
+# Ignore compiled Python files
+*.pyc
+__pycache__/
+
+# Ignore local settings file
+.env
+
+# Ignore IDE-specific directories
+.vscode/
+.idea/
+
+# Ignore system and temporary files
+.DS_Store
+Thumbs.db
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.sqlite
+*.log
+*.tmp
+
+# Ignore environment configuration files
+.env
+.env.local
+.env.*.local
+.env.development
+.env.test
+.env.production
+
+# Ignore pipenv
+Pipfile
+Pipfile.lock
+
+# Ignore pytest cache
+__pycache__/
+.cache/
+.pytest_cache/
+
+# Ignore coverage output
+htmlcov/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+
+# Ignore Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+models/.ipynb_checkpoints/Untitled-checkpoint.ipynb
+models/Untitled.ipynb
+models/.ipynb_checkpoints/Untitled-checkpoint.ipynb
