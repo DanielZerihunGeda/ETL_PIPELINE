@@ -1,21 +1,36 @@
-from Process import ProcessData
 from sqlalchemy import create_engine
 import pandas as pd
 
-def load_data_to_postgres(csv_file, data_address): # specify the db adress such as 'postgresql://postgres:123@localhost:5432/swarm'
-    data_processor = ProcessData(csv_file)
-    result = data_processor.slice_dataframes()
 
-    engine = create_engine(data_address)
+class CreateTable:
+    def __init__(self, single_df, collection_of_dfs):
+        self.single_df = single_df
+        self.collection_of_dfs = collection_of_dfs
+    #reading the db credentials from pass.txt which contain username, password and databasename consecutively
+    def read_db_credentials(self, file_path='pass.txt'):
+        with open(file_path, 'r') as file:
+            lines = file.readlines()
+            username = lines[0].strip()
+            password = lines[1].strip()
+            database_name = lines[2].strip()
 
-    for i, df in enumerate(result):
-        table_name = f'Table_{i}'
-        df.to_sql(table_name, engine, index=False, if_exists='replace')
+        return username, password, database_name
 
-    print("All Dataframes are loaded into PostgreSQL database successfully!!!")
+    def table_single_df(self):
+        username, password, database_name = self.read_db_credentials()
+        engine = create_engine(f'postgresql://{username}:{password}@localhost:5432/{database_name}', echo=True)
+        self.single_df.to_sql('single_table', con=engine, if_exists='append', index=False)
+        print("The first DataFrame is loaded to the first table in the database we created.")
+   
+   
+    #creating tables for each time-series DataFrames we created.
+    def table_collection_dfs(self):
+        username, password, database_name = self.read_db_credentials()
+        engine = create_engine(f'postgresql://{username}:{password}@localhost:5432/{database_name}', echo=True)
 
-
-csv_file_path = 'swarm_drone.csv'
-postgres_url = 'postgresql://postgres:123@localhost:5432/swarm'
-
-load_data_to_postgres(csv_file_path, postgres_url)
+        for i, df in enumerate(self.collection_of_dfs):
+            if isinstance(df, pd.DataFrame):
+                df.to_sql(f'table_{i}', con=engine, if_exists='append', index=False)
+                print(f'Table created from DataFrame {i} in "{database_name}" database.')
+            else:
+                print(f'Unsupported type: {type(df)}')
