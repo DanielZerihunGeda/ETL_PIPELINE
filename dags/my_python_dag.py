@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 from airflow import DAG
-from airflow.operators.python_operator import PythonOperator
+from airflow.operators.python_operator import PythonOperator, BranchPythonOperator
+from airflow.operators.bash_operator import BashOperator
 from table import CreateTable
 from Process import ProcessData
 
@@ -26,7 +27,7 @@ def extract_and_process_data():
     # Extract and process the data using ProcessData
     data = process.extract_first_four_columns()
     return data
-""" we will define each methods according to their order of excution"""
+
 def slice_dataframes():
     # Slicing dataframes using ProcessData
     return process.slice_dataframes()
@@ -40,6 +41,14 @@ def create_collection_df_table(data):
     # Create a table for a collection of DataFrames using CreateTable
     tb = CreateTable(collection_of_dfs=data)
     tb.table_collection_dfs()
+
+# Add the dbt cleaning command
+dbt_cleaning_command = "dbt run --models +cleaning.clean_tables"
+task_dbt_cleaning = BashOperator(
+    task_id='dbt_cleaning',
+    bash_command=dbt_cleaning_command,
+    dag=dag,
+)
 
 # Define the DAG
 dag = DAG(
@@ -76,7 +85,9 @@ task_create_collection_df_table = PythonOperator(
     dag=dag,
 )
 
-"""setting up dependencies which task must be excuted before the second task we have total of four tasks which depend on eachother"""
+"""setting up dependencies which task must be executed before the second task we have total of four tasks which depend on each other"""
 task_extract_and_process >> task_slice_dataframes
 task_slice_dataframes >> task_create_single_df_table
 task_slice_dataframes >> task_create_collection_df_table
+# Add the dbt cleaning task as the last task
+task_create_collection_df_table >> task_dbt_cleaning
