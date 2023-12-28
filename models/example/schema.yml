@@ -1,21 +1,54 @@
-
 version: 2
 
 models:
-  - name: my_first_dbt_model
-    description: "A starter dbt model"
+  - name: single_table_structure
+    description: 'The single table contains '
     columns:
-      - name: id
-        description: "The primary key for this table"
+      - name: track_id
+        description: 'Identifier for the track'
         tests:
-          - unique
+          - not_null
+      - name: type
+        description: 'Type of the track'
+        tests:
+          - not_null
+      - name: traveled_d
+        description: 'Traveled distance for the track'
+        tests:
+          - not_null
+      - name: avg_speed
+        description: 'Average speed for the track'
+        tests:
           - not_null
 
-  - name: my_second_dbt_model
-    description: "A starter dbt model"
+  - name: common_table_structure
+    description: 'Common structure for tables with the same column names'
     columns:
-      - name: id
-        description: "The primary key for this table"
+      - name: track_id
+        description: 'Identifier for the track'
         tests:
-          - unique
+          - not_null
+      - name: lat
+        description: 'Latitude'
+        tests:
+          - not_null
+      - name: lon
+        description: 'Longitude'
+        tests:
+          - not_null
+      - name: speed
+        description: 'Speed'
+        tests:
+          - not_null
+      - name: lon_acc
+        description: 'Longitude accuracy'
+        tests:
+          - not_null
+      - name: lat_acc
+        description: 'Latitude accuracy'
+        tests:
+          - not_null
+      - name: time
+        description: 'Instantaneous time for the record'
+        tests:
           - not_null
