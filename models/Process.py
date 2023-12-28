@@ -54,5 +54,5 @@ class ProcessData:
             ]
             sliced_df = pd.DataFrame(sliced_row, columns=['lat', 'lon', 'speed', 'lon_acc', 'lat_acc', 'time'])
             result_dfs.append(sliced_df)
-
+            result_dfs['track_id'] = data['track_id']
         return result_dfs
