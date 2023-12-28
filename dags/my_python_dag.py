@@ -43,7 +43,7 @@ def create_collection_df_table(data):
     tb.table_collection_dfs()
 
 # Add the dbt cleaning command
-dbt_cleaning_command = "dbt run --models +cleaning.clean_tables"
+dbt_cleaning_command = "dbt run --models +example.clean_timeseries_tables"
 task_dbt_cleaning = BashOperator(
     task_id='dbt_cleaning',
     bash_command=dbt_cleaning_command,
@@ -89,5 +89,5 @@ task_create_collection_df_table = PythonOperator(
 task_extract_and_process >> task_slice_dataframes
 task_slice_dataframes >> task_create_single_df_table
 task_slice_dataframes >> task_create_collection_df_table
-# Add the dbt cleaning task as the last task
+# Adding dbt task
 task_create_collection_df_table >> task_dbt_cleaning
