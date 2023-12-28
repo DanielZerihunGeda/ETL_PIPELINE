@@ -1,27 +1,20 @@
 
 /*
-    Welcome to your first dbt model!
-    Did you know that you can also configure models directly within SQL files?
-    This will override configurations stated in dbt_project.yml
-
-    Try changing "table" to "view" below
+  Here we are trying to remove all null values from all tables we created to store the data
+  at time t iff all values across all columns are null because we assigned NaN while we are 
+  creating our DataFrame,
 */
 
-{{ config(materialized='table') }}
+{% set table_names = adapter.get_relation(view='table_%', database='your_database', schema='your_schema') %}
 
-with source_data as (
+{% for table_name in table_names %}
 
-    select 1 as id
-    union all
-    select null as id
-
+WITH cleaned_{{ table_name.table_name }} AS (
+    SELECT *
+    FROM "{{ ref(table_name.table_name) }}"
+    WHERE NOT ({{ ', '.join(['"{{ table_name.table_name }}".' ~ column.column_name ~ ' IS NULL' for column in adapter.get_columns(ref(table_name.table_name))]) }})
 )
+{% endfor %}
+-- Union all cleaned tables
+SELECT * FROM {% for table_name in table_names %} cleaned_{{ table_name.table_name }} {% if not loop.last %} UNION ALL {% endif %} {% endfor %}
 
-select *
-from source_data
-
-/*
-    Uncomment the line below to remove records with null `id` values
-*/
-
--- where id is not null
