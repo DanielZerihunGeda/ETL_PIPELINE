@@ -25,22 +25,25 @@ process = ProcessData(csv_file)
 # Define the functions for each task
 def extract_and_process_data():
     # Extract and process the data using ProcessData
-    data = process.extract_first_four_columns()
-    return data
+    single_data = process.extract_first_four_columns()
+    return single_data
 
 def slice_dataframes():
     # Slicing dataframes using ProcessData
-    return process.slice_dataframes()
+    multiple_data = process.slice_dataframes()
+    return multiple_data
 
-def create_single_df_table(data):
+def create_single_df_table(single_data):
     # Create a table for a single DataFrame using CreateTable
-    tb = CreateTable(single_df=data)
+    tb = CreateTable(single_df=single_data)
     tb.table_single_df()
 
-def create_collection_df_table(data):
+def create_collection_df_table(multiple_data):
     # Create a table for a collection of DataFrames using CreateTable
-    tb = CreateTable(collection_of_dfs=data)
+    tb = CreateTable(collection_of_dfs=multiple_data)
     tb.table_collection_dfs()
+    tb.remove_nan_rows()
+
 
 # Add the dbt cleaning command
 dbt_cleaning_command = "dbt run --models +example.clean_timeseries_tables"
@@ -84,10 +87,14 @@ task_create_collection_df_table = PythonOperator(
     provide_context=True,  # Pass the output of the previous task as an argument
     dag=dag,
 )
-
+remove_nan_rows_task = PythonOperator(
+    task_id = 'remove_nan_rows', 
+    python_callable = remove_nan_rows,
+    provide_context=True
+)
 """setting up dependencies which task must be executed before the second task we have total of four tasks which depend on each other"""
 task_extract_and_process >> task_slice_dataframes
 task_slice_dataframes >> task_create_single_df_table
 task_slice_dataframes >> task_create_collection_df_table
 # Adding dbt task
-task_create_collection_df_table >> task_dbt_cleaning
+
