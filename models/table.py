@@ -35,22 +35,22 @@ class CreateTable:
             else:
                 print(f'Unsupported type: {type(df)}')
     def remove_nan_rows(self):
-    if not self.collection_of_tables:
-        logging.warning("No tables to process. Run 'table_collection_dfs' first.")
-        return
+        if not self.collection_of_tables:
+            logging.warning("No tables to process. Run 'table_collection_dfs' first.")
+            return
 
-    with self.engine.connect() as connection:
-        for i, table in enumerate(self.collection_of_tables):
-            table_name = f'table_{i}'
+        with self.engine.connect() as connection:
+            for i, table in enumerate(self.collection_of_tables):
+                table_name = f'table_{i}'
 
-            # Generate a list of SQL commands to remove rows with all zero values in each column
-            sql_commands = [
-                f"DELETE FROM {table_name} WHERE NOT EXISTS (SELECT 1 FROM {table_name} WHERE {col} != 0)"
-                for col in table.columns
-            ]
+                # Generate a list of SQL commands to remove rows with all zero values in each column
+                sql_commands = [
+                    f"DELETE FROM {table_name} WHERE NOT EXISTS (SELECT 1 FROM {table_name} WHERE {col} != 0)"
+                    for col in table.columns
+                ]
 
-            # Execute the generated SQL commands
-            for sql_command in sql_commands:
+                # Execute the generated SQL commands
+                for sql_command in sql_commands:
                 connection.execute(sql_command)
 
-            logging.info(f"Removed rows with all zero values from {table_name}.")
+                logging.info(f"Removed rows with all zero values from {table_name}.")
