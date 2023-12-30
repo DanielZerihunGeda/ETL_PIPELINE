@@ -92,6 +92,7 @@ remove_nan_rows_task = PythonOperator(
     python_callable = remove_nan_rows,
     provide_context=True
 )
+
 """setting up dependencies which task must be executed before the second task we have total of four tasks which depend on each other"""
 task_extract_and_process >> task_slice_dataframes
 task_slice_dataframes >> task_create_single_df_table
