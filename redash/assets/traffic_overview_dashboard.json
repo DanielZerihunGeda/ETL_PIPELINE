@@ -1,0 +1,88 @@
+{
+  "dashboard": {
+    "name": "Traffic Trajectory Overview",
+    "slug": "traffic-trajectory-overview",
+    "description": "Default local dashboard for transformed vehicle trajectory metrics."
+  },
+  "data_source": {
+    "name": "Local Traffic Warehouse",
+    "type": "pg",
+    "options": {
+      "host": "warehouse-postgres",
+      "port": 5432,
+      "dbname": "traffic_warehouse",
+      "user": "warehouse"
+    }
+  },
+  "queries": [
+    {
+      "name": "Trajectory Runs Summary",
+      "description": "Run-level row counts, vehicle counts, and average speeds.",
+      "query": "select dataset_date, area, run_identifier, source_file, trajectory_record_count, metadata_row_count, vehicle_count, average_track_speed, average_observed_speed, first_observed_at, last_observed_at from mart.fct_trajectory_runs order by dataset_date desc, run_identifier desc;",
+      "visualization": {
+        "type": "TABLE",
+        "name": "Run summary"
+      }
+    },
+    {
+      "name": "Vehicle Type Counts",
+      "description": "Vehicle counts and trajectory records by type.",
+      "query": "select dataset_date, area, run_identifier, vehicle_type, vehicle_count, trajectory_record_count, average_track_speed, average_observed_speed from mart.vehicle_type_metrics order by dataset_date desc, vehicle_count desc;",
+      "visualization": {
+        "type": "BAR",
+        "name": "Vehicles by type",
+        "options": {
+          "xAxis": {
+            "type": "category",
+            "name": "vehicle_type"
+          },
+          "yAxis": {
+            "type": "value",
+            "name": "vehicle_count"
+          }
+        }
+      }
+    },
+    {
+      "name": "Trajectory Coverage",
+      "description": "Observed trajectory time coverage per run.",
+      "query": "select dataset_date, area, run_identifier, min(first_observed_at) as first_observed_at, max(last_observed_at) as last_observed_at, sum(trajectory_record_count) as trajectory_record_count from mart.fct_trajectory_runs group by 1, 2, 3 order by dataset_date desc, run_identifier desc;",
+      "visualization": {
+        "type": "TABLE",
+        "name": "Coverage by run"
+      }
+    }
+  ],
+  "widgets": [
+    {
+      "query": "Trajectory Runs Summary",
+      "visualization": "Run summary",
+      "position": {
+        "col": 0,
+        "row": 0,
+        "sizeX": 6,
+        "sizeY": 5
+      }
+    },
+    {
+      "query": "Vehicle Type Counts",
+      "visualization": "Vehicles by type",
+      "position": {
+        "col": 6,
+        "row": 0,
+        "sizeX": 6,
+        "sizeY": 5
+      }
+    },
+    {
+      "query": "Trajectory Coverage",
+      "visualization": "Coverage by run",
+      "position": {
+        "col": 0,
+        "row": 5,
+        "sizeX": 12,
+        "sizeY": 4
+      }
+    }
+  ]
+}

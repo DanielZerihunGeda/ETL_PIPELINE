@@ -1,0 +1,266 @@
+name: etl-pipeline
+
+x-airflow-image: &airflow-image
+  image: ${AIRFLOW_IMAGE:-etl-pipeline-airflow-dbt:local}
+  build:
+    context: .
+    dockerfile: docker/airflow/Dockerfile
+    args:
+      AIRFLOW_BASE_IMAGE: ${AIRFLOW_BASE_IMAGE:-apache/airflow:2.9.3-python3.11}
+      AIRFLOW_VERSION: ${AIRFLOW_VERSION:-2.9.3}
+      AIRFLOW_PYTHON_VERSION: ${AIRFLOW_PYTHON_VERSION:-3.11}
+      DBT_POSTGRES_VERSION: ${DBT_POSTGRES_VERSION:-1.8.2}
+
+x-airflow-volumes: &airflow-volumes
+  - ./dags:/opt/airflow/dags
+  - ./models:/opt/airflow/dbt/models
+  - ./macros:/opt/airflow/dbt/macros
+  - ./seeds:/opt/airflow/dbt/seeds
+  - ./snapshots:/opt/airflow/dbt/snapshots
+  - ./etl_pipeline:/opt/airflow/etl_pipeline:ro
+  - ./dbt_project.yml:/opt/airflow/dbt/dbt_project.yml:ro
+  - ./profiles:/opt/airflow/.dbt:ro
+  - ${LOCAL_DATA_PATH:-./data}:/opt/airflow/data:ro
+  - airflow_logs:/opt/airflow/logs
+
+x-airflow-env: &airflow-env
+  AIRFLOW__CORE__EXECUTOR: LocalExecutor
+  AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+  AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
+  AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${AIRFLOW_DB_USER:-airflow}:${AIRFLOW_DB_PASSWORD:-airflow}@airflow-postgres:5432/${AIRFLOW_DB_NAME:-airflow}
+  AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY:-}
+  AIRFLOW__WEBSERVER__SECRET_KEY: ${AIRFLOW_WEBSERVER_SECRET_KEY:-local-airflow-secret}
+  AIRFLOW_CONN_WAREHOUSE_POSTGRES: postgresql://${WAREHOUSE_USER:-warehouse}:${WAREHOUSE_PASSWORD:-warehouse}@warehouse-postgres:5432/${WAREHOUSE_DB:-traffic_warehouse}
+  DBT_PROFILES_DIR: /opt/airflow/.dbt
+  DBT_PROJECT_DIR: /opt/airflow/dbt
+  DBT_TARGET: ${DBT_TARGET:-dev}
+  WAREHOUSE_DB: ${WAREHOUSE_DB:-traffic_warehouse}
+  WAREHOUSE_HOST: warehouse-postgres
+  WAREHOUSE_PASSWORD: ${WAREHOUSE_PASSWORD:-warehouse}
+  WAREHOUSE_PORT: "5432"
+  WAREHOUSE_USER: ${WAREHOUSE_USER:-warehouse}
+  PYTHONPATH: /opt/airflow
+  TRAJECTORY_DATA_PATH: ${TRAJECTORY_DATA_PATH:-/opt/airflow/data}
+  TRAJECTORY_FILE_PATTERN: ${TRAJECTORY_FILE_PATTERN:-*.csv}
+  TRAJECTORY_DELIMITER: ${TRAJECTORY_DELIMITER:-;}
+  DATASET_DATE: ${DATASET_DATE:-}
+  DATASET_AREA: ${DATASET_AREA:-}
+  RUN_IDENTIFIER: ${RUN_IDENTIFIER:-manual}
+  PIPELINE_ALERT_WEBHOOK_URL: ${PIPELINE_ALERT_WEBHOOK_URL:-}
+
+x-airflow-common: &airflow-common
+  <<: *airflow-image
+  user: "${AIRFLOW_UID:-50000}:0"
+  environment:
+    <<: *airflow-env
+  volumes: *airflow-volumes
+  depends_on:
+    airflow-postgres:
+      condition: service_healthy
+    warehouse-postgres:
+      condition: service_healthy
+
+x-redash-env: &redash-env
+  PYTHONUNBUFFERED: "0"
+  REDASH_DATABASE_URL: postgresql://${REDASH_DB_USER:-redash}:${REDASH_DB_PASSWORD:-redash}@redash-postgres:5432/${REDASH_DB_NAME:-redash}
+  REDASH_REDIS_URL: redis://redis:6379/0
+  REDASH_COOKIE_SECRET: ${REDASH_COOKIE_SECRET:-local-redash-cookie-secret}
+  REDASH_SECRET_KEY: ${REDASH_SECRET_KEY:-local-redash-secret-key}
+  REDASH_HOST: ${REDASH_HOST:-http://localhost:5000}
+  REDASH_LOG_LEVEL: INFO
+
+x-redash-common: &redash-common
+  image: ${REDASH_IMAGE:-redash/redash:10.1.0.b50633}
+  environment:
+    <<: *redash-env
+  depends_on:
+    redis:
+      condition: service_healthy
+    redash-postgres:
+      condition: service_healthy
+
+services:
+  warehouse-postgres:
+    image: ${WAREHOUSE_POSTGRES_IMAGE:-postgres:16}
+    environment:
+      POSTGRES_DB: ${WAREHOUSE_DB:-traffic_warehouse}
+      POSTGRES_USER: ${WAREHOUSE_USER:-warehouse}
+      POSTGRES_PASSWORD: ${WAREHOUSE_PASSWORD:-warehouse}
+    ports:
+      - "${WAREHOUSE_PORT:-5432}:5432"
+    volumes:
+      - warehouse_postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  airflow-postgres:
+    image: ${AIRFLOW_DB_IMAGE:-postgres:16}
+    environment:
+      POSTGRES_DB: ${AIRFLOW_DB_NAME:-airflow}
+      POSTGRES_USER: ${AIRFLOW_DB_USER:-airflow}
+      POSTGRES_PASSWORD: ${AIRFLOW_DB_PASSWORD:-airflow}
+    volumes:
+      - airflow_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  airflow-init:
+    <<: *airflow-common
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        airflow db migrate &&
+        airflow users create \
+          --if-not-exists \
+          --role Admin \
+          --username "$${AIRFLOW_ADMIN_USERNAME:-airflow}" \
+          --password "$${AIRFLOW_ADMIN_PASSWORD:-airflow}" \
+          --firstname "$${AIRFLOW_ADMIN_FIRSTNAME:-Airflow}" \
+          --lastname "$${AIRFLOW_ADMIN_LASTNAME:-Admin}" \
+          --email "$${AIRFLOW_ADMIN_EMAIL:-airflow@example.local}"
+    restart: "no"
+    environment:
+      <<: *airflow-env
+      AIRFLOW_ADMIN_USERNAME: ${AIRFLOW_ADMIN_USERNAME:-airflow}
+      AIRFLOW_ADMIN_PASSWORD: ${AIRFLOW_ADMIN_PASSWORD:-airflow}
+      AIRFLOW_ADMIN_EMAIL: ${AIRFLOW_ADMIN_EMAIL:-airflow@example.local}
+      AIRFLOW_ADMIN_FIRSTNAME: ${AIRFLOW_ADMIN_FIRSTNAME:-Airflow}
+      AIRFLOW_ADMIN_LASTNAME: ${AIRFLOW_ADMIN_LASTNAME:-Admin}
+
+  airflow-webserver:
+    <<: *airflow-common
+    command: webserver
+    ports:
+      - "${AIRFLOW_PORT:-8080}:8080"
+    depends_on:
+      airflow-postgres:
+        condition: service_healthy
+      warehouse-postgres:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  airflow-scheduler:
+    <<: *airflow-common
+    command: scheduler
+    depends_on:
+      airflow-postgres:
+        condition: service_healthy
+      warehouse-postgres:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+
+  redis:
+    image: ${REDIS_IMAGE:-redis:7-alpine}
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redash-postgres:
+    image: ${REDASH_DB_IMAGE:-postgres:16}
+    environment:
+      POSTGRES_DB: ${REDASH_DB_NAME:-redash}
+      POSTGRES_USER: ${REDASH_DB_USER:-redash}
+      POSTGRES_PASSWORD: ${REDASH_DB_PASSWORD:-redash}
+    volumes:
+      - redash_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  redash-init:
+    <<: *redash-common
+    command: create_db
+    restart: "no"
+
+  redash:
+    <<: *redash-common
+    command: server
+    ports:
+      - "${REDASH_PORT:-5000}:5000"
+    depends_on:
+      redis:
+        condition: service_healthy
+      redash-postgres:
+        condition: service_healthy
+      redash-init:
+        condition: service_completed_successfully
+
+  redash-worker:
+    <<: *redash-common
+    command: worker
+    depends_on:
+      redis:
+        condition: service_healthy
+      redash-postgres:
+        condition: service_healthy
+      redash-init:
+        condition: service_completed_successfully
+
+  redash-scheduler:
+    <<: *redash-common
+    command: scheduler
+    depends_on:
+      redis:
+        condition: service_healthy
+      redash-postgres:
+        condition: service_healthy
+      redash-init:
+        condition: service_completed_successfully
+
+  dbt:
+    <<: *airflow-image
+    environment:
+      DBT_PROFILES_DIR: /opt/airflow/.dbt
+      DBT_PROJECT_DIR: /opt/airflow/dbt
+      DBT_TARGET: ${DBT_TARGET:-dev}
+      WAREHOUSE_DB: ${WAREHOUSE_DB:-traffic_warehouse}
+      WAREHOUSE_HOST: warehouse-postgres
+      WAREHOUSE_PASSWORD: ${WAREHOUSE_PASSWORD:-warehouse}
+      WAREHOUSE_PORT: "5432"
+      WAREHOUSE_USER: ${WAREHOUSE_USER:-warehouse}
+      PYTHONPATH: /opt/airflow
+      TRAJECTORY_DATA_PATH: ${TRAJECTORY_DATA_PATH:-/opt/airflow/data}
+      TRAJECTORY_FILE_PATTERN: ${TRAJECTORY_FILE_PATTERN:-*.csv}
+      TRAJECTORY_DELIMITER: ${TRAJECTORY_DELIMITER:-;}
+      DATASET_DATE: ${DATASET_DATE:-}
+      DATASET_AREA: ${DATASET_AREA:-}
+      RUN_IDENTIFIER: ${RUN_IDENTIFIER:-manual}
+      PIPELINE_ALERT_WEBHOOK_URL: ${PIPELINE_ALERT_WEBHOOK_URL:-}
+    volumes: *airflow-volumes
+    working_dir: /opt/airflow/dbt
+    command: bash -c "dbt --version && tail -f /dev/null"
+    depends_on:
+      warehouse-postgres:
+        condition: service_healthy
+
+volumes:
+  warehouse_postgres_data:
+  airflow_postgres_data:
+  airflow_logs:
+  redash_postgres_data:
+  redis_data:

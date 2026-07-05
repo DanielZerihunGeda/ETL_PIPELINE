@@ -1,21 +1,24 @@
-
-# Name your project! Project names should contain only lowercase characters
-# and underscores. A good package name should reflect your organization's
-# name or the intended use of these models
-name: 'DWH'
-version: '1.0.0'
+name: "dwh"
+version: "1.0.0"
 config-version: 2
 
-# This setting configures which "profile" dbt uses for this project
-dbt_project:
-  target: dev
-  outputs:
-    dev:
-      type: postgres
-      host: localhost
-      user: username
-      pass: your_password
-      port: port_no
-      dbname: database_name
-      schema: public
+profile: "dwh"
 
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+models:
+  dwh:
+    +materialized: view
+    staging:
+      +schema: staging
+    marts:
+      +schema: mart

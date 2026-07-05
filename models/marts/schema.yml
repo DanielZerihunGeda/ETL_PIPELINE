@@ -1,0 +1,47 @@
+version: 2
+
+models:
+  - name: fct_trajectory_runs
+    description: File/run-level traffic metrics for dashboarding and validation.
+    columns:
+      - name: source_file
+        description: Name of the loaded source file.
+        tests:
+          - not_null:
+              config:
+                severity: error
+      - name: run_identifier
+        description: Runtime identifier used for idempotent loading.
+        tests:
+          - not_null:
+              config:
+                severity: error
+      - name: trajectory_record_count
+        description: Count of raw trajectory rows represented in the run.
+        tests:
+          - not_null:
+              config:
+                severity: error
+      - name: metadata_row_count
+        description: File-level row count recorded during ingestion.
+        tests:
+          - not_null:
+              config:
+                severity: error
+  - name: vehicle_type_metrics
+    description: Traffic metrics grouped by vehicle type, dataset, area, and run.
+    columns:
+      - name: run_identifier
+        description: Runtime identifier used for idempotent loading.
+        tests:
+          - not_null:
+              config:
+                severity: error
+      - name: vehicle_type
+        description: Vehicle type reported by the source file.
+      - name: trajectory_record_count
+        description: Count of trajectory records in this group.
+        tests:
+          - not_null:
+              config:
+                severity: error

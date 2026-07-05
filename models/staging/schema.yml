@@ -1,0 +1,55 @@
+version: 2
+
+models:
+  - name: stg_trajectory_records
+    description: Typed and audit-preserving staging view over raw trajectory rows.
+    columns:
+      - name: source_file
+        description: Name of the local file that produced the raw row.
+        tests:
+          - not_null:
+              config:
+                severity: error
+      - name: run_identifier
+        description: Runtime identifier used for idempotent loading.
+        tests:
+          - not_null:
+              config:
+                severity: error
+      - name: row_number
+        description: One-based row number within the source file.
+        tests:
+          - not_null:
+              config:
+                severity: error
+      - name: raw_payload
+        description: Original source row as JSON for auditability.
+        tests:
+          - not_null:
+              config:
+                severity: error
+      - name: vehicle_type
+        description: Vehicle type reported by the source file.
+      - name: avg_speed
+        description: Average speed reported at the track level.
+  - name: stg_load_metadata
+    description: File-level audit records produced by ingestion.
+    columns:
+      - name: source_file
+        description: Name of the loaded source file.
+        tests:
+          - not_null:
+              config:
+                severity: error
+      - name: run_identifier
+        description: Runtime identifier used for idempotent loading.
+        tests:
+          - not_null:
+              config:
+                severity: error
+      - name: row_count
+        description: Number of rows loaded for the file/run pair.
+        tests:
+          - not_null:
+              config:
+                severity: error

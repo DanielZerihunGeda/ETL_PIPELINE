@@ -1,0 +1,13 @@
+dwh:
+  target: "{{ env_var('DBT_TARGET', 'dev') }}"
+  outputs:
+    dev:
+      type: postgres
+      host: "{{ env_var('WAREHOUSE_HOST', 'warehouse-postgres') }}"
+      user: "{{ env_var('WAREHOUSE_USER', 'warehouse') }}"
+      password: "{{ env_var('WAREHOUSE_PASSWORD', 'warehouse') }}"
+      port: "{{ env_var('WAREHOUSE_PORT', '5432') | int }}"
+      dbname: "{{ env_var('WAREHOUSE_DB', 'traffic_warehouse') }}"
+      schema: staging
+      threads: 4
+      keepalives_idle: 0

@@ -1,0 +1,41 @@
+version: 2
+
+sources:
+  - name: raw
+    description: Raw vehicle trajectory data loaded from local source files.
+    schema: raw
+    tables:
+      - name: trajectory_records
+        description: One raw record per source trajectory row, preserving the original row payload.
+        columns:
+          - name: source_file
+            description: Name of the local file that produced the raw row.
+            tests:
+              - not_null
+          - name: run_identifier
+            description: Runtime identifier used for idempotent loading.
+            tests:
+              - not_null
+          - name: row_number
+            description: One-based row number within the source file.
+            tests:
+              - not_null
+          - name: raw_payload
+            description: Original source row stored as JSON.
+            tests:
+              - not_null
+      - name: load_metadata
+        description: File-level audit metadata captured by the ingestion process.
+        columns:
+          - name: source_file
+            description: Name of the loaded source file.
+            tests:
+              - not_null
+          - name: run_identifier
+            description: Runtime identifier used for idempotent loading.
+            tests:
+              - not_null
+          - name: row_count
+            description: Number of source rows loaded for the file/run pair.
+            tests:
+              - not_null
